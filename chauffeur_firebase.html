@@ -131,4 +131,27 @@ function makeRide(r,isPending){
   return html;
 }
 
-funct
+function accept(id){
+  var rides=getRides();
+  rides=rides.map(r=>r.id===id?{...r,status:'accepted'}:r);
+  saveRides(rides);
+  render();
+}
+
+function refuse(id){
+  var rides=getRides().filter(r=>r.id!==id);
+  saveRides(rides);
+  render();
+}
+
+function done(id){
+  var rides=getRides();
+  rides=rides.map(r=>r.id===id?{...r,status:'done'}:r);
+  saveRides(rides);
+  render();
+}
+
+document.getElementById('pwd').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
+</script>
+</body>
+</html>
