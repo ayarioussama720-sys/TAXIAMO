@@ -1,180 +1,98 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TaxiNow Client</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
-    :root{--bg:#0d1117;--card:#161b22;--panel:#21262d;--gold:#f0a500;--text:#e6edf3;--muted:#8b949e}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-    #topbar{padding:12px 16px;background:var(--card);display:flex;align-items:center;gap:10px;flex-shrink:0}
-    .logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f0a500,#c47f00);display:flex;align-items:center;justify-content:center;font-size:18px}
-    .logo-text{font-weight:800;font-size:17px}
-    #msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px}
-    .msg{display:flex;gap:8px;align-items:flex-end}
-    .msg.me{justify-content:flex-end}
-    .avatar{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#f0a500,#c47f00);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-    .bubble{max-width:80%;padding:11px 15px;font-size:13.5px;border-radius:16px;line-height:1.6;word-wrap:break-word}
-    .msg.bot .bubble{background:var(--panel)}
-    .msg.me .bubble{background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:600}
-    #bar{padding:10px 14px;display:flex;gap:8px;border-top:1px solid var(--panel)}
-    #inp{flex:1;background:var(--panel);border:1px solid var(--panel);border-radius:12px;padding:11px 14px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px}
-    #sbtn{width:44px;height:44px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;cursor:pointer;font-size:18px;font-weight:700}
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:999}
-    .modal.hide{display:none}
-    .mbox{background:var(--card);border-radius:20px;padding:24px;width:100%;max-width:360px;text-align:center}
-    .mbox h2{font-size:18px;margin-bottom:8px}
-    .mbox p{font-size:13px;color:var(--muted);margin-bottom:20px}
-    .mbox input{width:100%;padding:12px;border-radius:12px;border:none;background:var(--panel);color:var(--text);margin-bottom:12px;font-family:'Sora',sans-serif}
-    .mbox button{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;font-size:14px}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TaxiNow - Client</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#161b22;border-radius:20px;padding:24px;width:100%;max-width:420px}
+h1{font-size:22px;margin-bottom:6px;color:#f0a500}
+p{font-size:13px;color:#8b949e;margin-bottom:20px}
+label{font-size:12px;color:#8b949e;display:block;margin-bottom:4px;margin-top:12px}
+input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#21262d;color:#e6edf3;font-size:14px}
+.btn{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;font-size:16px;cursor:pointer;margin-top:20px}
+.success{background:#1a3a2a;border:1px solid #3fb950;border-radius:12px;padding:16px;margin-top:16px;display:none;text-align:center;color:#3fb950;font-weight:600}
+</style>
 </head>
 <body>
-
-<div class="modal" id="modal">
-  <div class="mbox">
-    <h2>🔑 Clé API</h2>
-    <p>Entrez votre clé Anthropic</p>
-    <input id="apikey" type="password" placeholder="sk-ant-..."/>
-    <button type="button" onclick="startApp()">Démarrer</button>
+<div class="card">
+  <h1>🚖 TaxiNow</h1>
+  <p>Réservez votre taxi en quelques secondes</p>
+  
+  <label>Votre prénom</label>
+  <input id="name" type="text" placeholder="Ex: Oussama"/>
+  
+  <label>Votre numéro de téléphone</label>
+  <input id="phone" type="tel" placeholder="Ex: 514-555-1234"/>
+  
+  <label>Lieu de prise en charge</label>
+  <input id="from" type="text" placeholder="Ex: 2330 Ave Chapdelaine"/>
+  
+  <label>Destination</label>
+  <input id="to" type="text" placeholder="Ex: Aéroport Montréal"/>
+  
+  <label>Heure de prise en charge</label>
+  <input id="time" type="time"/>
+  
+  <label>Nombre de passagers</label>
+  <select id="pax">
+    <option value="1">1 passager</option>
+    <option value="2">2 passagers</option>
+    <option value="3">3 passagers</option>
+    <option value="4">4 passagers</option>
+  </select>
+  
+  <button class="btn" onclick="submit()">🚖 Envoyer la demande</button>
+  
+  <div class="success" id="success">
+    ✅ Demande envoyée ! Un chauffeur vous contactera bientôt.
   </div>
 </div>
 
-<div id="topbar">
-  <div class="logo-icon">🚖</div>
-  <div class="logo-text">TaxiNow</div>
-</div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
 
-<div id="msgs"></div>
-
-<div id="bar">
-  <input id="inp" type="text" placeholder="Message..."/>
-  <button id="sbtn" type="button">➤</button>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
-
-<script>
-const config = {
-  apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
-  authDomain: "taxiamo-ac9f0.firebaseapp.com",
-  databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
-  projectId: "taxiamo-ac9f0",
-  storageBucket: "taxiamo-ac9f0.appspot.com",
-  messagingSenderId: "779304748093",
-  appId: "1:779304748093:web:5f10802b8e47c20981d654"
-};
-
-firebase.initializeApp(config);
-const db = firebase.database();
-
-let apiKey = '';
-let history = [];
-let busy = false;
-
-function startApp(){
-  const key = document.getElementById('apikey').value.trim();
-  if(!key.startsWith('sk-ant-')){
-    alert('Clé invalide');
-    return;
-  }
-  apiKey = key;
-  localStorage.setItem('apikey', key);
-  document.getElementById('modal').classList.add('hide');
-  document.getElementById('msgs').innerHTML = '<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Je suis votre assistant de réservation. Quel est votre prénom?</div></div>';
-}
-
-function send(){
-  const text = document.getElementById('inp').value.trim();
-  if(!text || busy || !apiKey) return;
-  
-  document.getElementById('inp').value = '';
-  addMsg(text, 'me');
-  history.push({role: 'user', content: text});
-  busy = true;
-  
-  const system = 'Tu es assistant de réservation taxi. Collecte: prénom, départ, destination, heure, passagers. Quand complet, réponds UNIQUEMENT: {"ok":true,"name":"X","from":"Y","to":"Z","time":"H","pax":N}';
-  
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 200,
-      system: system,
-      messages: history
-    })
-  })
-  .then(r => r.json())
-  .then(data => {
-    const reply = data.content[0].text;
-    try {
-      const json = JSON.parse(reply);
-      if(json.ok){
-        db.ref('rides').push({
-          name: json.name,
-          from: json.from,
-          to: json.to,
-          time: json.time,
-          pax: json.pax,
-          status: 'pending',
-          created: new Date().toISOString()
-        });
-        addMsg('✅ Course réservée!', 'bot');
-        history = [];
-        document.getElementById('msgs').innerHTML = '<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Je suis votre assistant de réservation. Quel est votre prénom?</div></div>';
-        return;
-      }
-    }catch(e){}
-    
-    history.push({role: 'assistant', content: reply});
-    addMsg(reply, 'bot');
-  })
-  .catch(e => {
-    addMsg('Erreur!', 'bot');
-    console.error(e);
-  })
-  .finally(() => {
-    busy = false;
+  const app = initializeApp({
+    apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
+    authDomain: "taxiamo-ac9f0.firebaseapp.com",
+    databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
+    projectId: "taxiamo-ac9f0",
+    storageBucket: "taxiamo-ac9f0.appspot.com",
+    messagingSenderId: "779304748093",
+    appId: "1:779304748093:web:5f10802b8e47c20981d654"
   });
-}
 
-function addMsg(txt, role){
-  const div = document.createElement('div');
-  div.className = 'msg ' + role;
-  if(role === 'bot'){
-    div.innerHTML = '<div class="avatar">🚖</div><div class="bubble">'+txt+'</div>';
-  } else {
-    div.innerHTML = '<div class="bubble">'+txt+'</div>';
-  }
-  document.getElementById('msgs').appendChild(div);
-  document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
-}
+  const db = getDatabase(app);
 
-document.getElementById('sbtn').addEventListener('click', send);
-document.getElementById('inp').addEventListener('keypress', e => {
-  if(e.key === 'Enter'){
-    e.preventDefault();
-    send();
-  }
-});
+  window.submit = function(){
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const from = document.getElementById('from').value.trim();
+    const to = document.getElementById('to').value.trim();
+    const time = document.getElementById('time').value;
+    const pax = document.getElementById('pax').value;
 
-window.addEventListener('load', () => {
-  const saved = localStorage.getItem('apikey');
-  if(saved){
-    apiKey = saved;
-    document.getElementById('modal').classList.add('hide');
-    document.getElementById('msgs').innerHTML = '<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Je suis votre assistant de réservation. Quel est votre prénom?</div></div>';
+    if(!name || !phone || !from || !to || !time){
+      alert('Veuillez remplir tous les champs !');
+      return;
+    }
+
+    push(ref(db, 'rides'), {
+      name, phone, from, to, time, pax,
+      status: 'pending',
+      created: new Date().toISOString()
+    }).then(() => {
+      document.getElementById('success').style.display = 'block';
+      document.getElementById('name').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('from').value = '';
+      document.getElementById('to').value = '';
+      document.getElementById('time').value = '';
+    }).catch(e => alert('Erreur: ' + e.message));
   }
-});
 </script>
 </body>
 </html>
