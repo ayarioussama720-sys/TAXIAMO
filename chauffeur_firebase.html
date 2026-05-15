@@ -18,8 +18,6 @@
     .stat-txt{font-size:10px;color:var(--muted);margin-top:2px}
     .title{font-size:11px;font-weight:700;text-transform:uppercase;margin:12px 0 4px 0;color:var(--gold)}
     .ride{background:var(--panel);border-radius:14px;padding:14px;margin-bottom:8px;border-left:4px solid var(--gold)}
-    .ride.accepted{border-left-color:var(--green)}
-    .ride.done{border-left-color:var(--muted)}
     .ride-name{font-weight:700;font-size:15px;margin-bottom:8px}
     .ride-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;font-size:12px}
     .ride-box{background:var(--bg);border-radius:10px;padding:9px}
@@ -37,7 +35,7 @@
     .mbox h2{font-size:18px;margin-bottom:8px}
     .mbox p{font-size:13px;color:var(--muted);margin-bottom:20px}
     .mbox input{width:100%;padding:12px;border-radius:12px;border:none;background:var(--panel);color:var(--text);margin-bottom:12px;font-family:'Sora',sans-serif}
-    .mbox button{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif}
+    .mbox button{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;font-size:14px}
   </style>
 </head>
 <body>
@@ -46,8 +44,8 @@
   <div class="mbox">
     <h2>🚗 Chauffeur</h2>
     <p>Mot de passe</p>
-    <input id="pwd" type="password" placeholder="Entrez le mot de passe"/>
-    <button onclick="checkPwd()">Accéder</button>
+    <input id="pwd" type="password" placeholder="taxi2026"/>
+    <button type="button" onclick="login()">Accéder</button>
   </div>
 </div>
 
@@ -65,7 +63,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
 
 <script>
-const firebaseConfig = {
+const config = {
   apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
   authDomain: "taxiamo-ac9f0.firebaseapp.com",
   databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
@@ -75,73 +73,80 @@ const firebaseConfig = {
   appId: "1:779304748093:web:5f10802b8e47c20981d654"
 };
 
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(config);
 const db = firebase.database();
-const PWD='taxi2026';
-var rides={};
 
-function checkPwd(){
-  if(document.getElementById('pwd').value===PWD){
+let rides = {};
+
+function login(){
+  const pwd = document.getElementById('pwd').value;
+  if(pwd === 'taxi2026'){
     document.getElementById('modal').classList.add('hide');
-    listenRides();
-  }else{alert('Incorrect!');}
+    loadRides();
+    setInterval(loadRides, 2000);
+  } else {
+    alert('Mot de passe incorrect');
+  }
 }
 
-function listenRides(){
-  db.ref('rides').on('value',snap=>{
-    rides=snap.val()||{};
+function loadRides(){
+  db.ref('rides').once('value', snap => {
+    rides = snap.val() || {};
     render();
   });
 }
 
 function render(){
-  var arr=Object.entries(rides).map(([k,v])=>({...v,key:k}));
-  var p=arr.filter(r=>r.status==='pending');
-  var a=arr.filter(r=>r.status==='accepted');
-  var d=arr.filter(r=>r.status==='done');
+  const arr = Object.entries(rides).map(([k,v]) => ({...v, key: k}));
+  const pending = arr.filter(r => r.status === 'pending');
+  const accepted = arr.filter(r => r.status === 'accepted');
+  const done = arr.filter(r => r.status === 'done');
   
-  document.getElementById('stats').innerHTML=
-    '<div class="stat"><div class="stat-num" style="color:var(--gold)">'+p.length+'</div><div class="stat-txt">En attente</div></div>'+
-    '<div class="stat"><div class="stat-num" style="color:var(--green)">'+a.length+'</div><div class="stat-txt">En cours</div></div>'+
-    '<div class="stat"><div class="stat-num" style="color:var(--muted)">'+d.length+'</div><div class="stat-txt">Terminées</div></div>';
+  document.getElementById('stats').innerHTML = 
+    '<div class="stat"><div class="stat-num" style="color:var(--gold)">'+pending.length+'</div><div class="stat-txt">En attente</div></div>'+
+    '<div class="stat"><div class="stat-num" style="color:var(--green)">'+accepted.length+'</div><div class="stat-txt">En cours</div></div>'+
+    '<div class="stat"><div class="stat-num" style="color:var(--muted)">'+done.length+'</div><div class="stat-txt">Terminées</div></div>';
   
-  var html='';
-  if(p.length){
-    html+='<div class="title">🔔 Nouvelles</div>';
-    p.forEach(r=>html+=makeRide(r,true));
+  let html = '';
+  if(pending.length > 0){
+    html += '<div class="title">🔔 Nouvelles</div>';
+    pending.forEach(r => html += rideCard(r, true));
   }
-  if(a.length){
-    html+='<div class="title" style="color:var(--green);margin-top:8px">🚗 En cours</div>';
-    a.forEach(r=>html+=makeRide(r,false));
+  if(accepted.length > 0){
+    html += '<div class="title" style="color:var(--green);margin-top:8px">🚗 En cours</div>';
+    accepted.forEach(r => html += rideCard(r, false));
   }
-  if(d.length){
-    html+='<div class="title" style="color:var(--muted);margin-top:8px">Terminées</div>';
-    d.forEach(r=>html+=makeRide(r,false));
+  if(done.length > 0){
+    html += '<div class="title" style="color:var(--muted);margin-top:8px">Terminées</div>';
+    done.forEach(r => html += rideCard(r, false));
   }
-  if(!arr.length) html='<div class="empty"><div style="font-size:52px;margin-bottom:14px">🚖</div>Aucune demande</div>';
+  if(arr.length === 0){
+    html = '<div class="empty"><div style="font-size:52px;margin-bottom:14px">🚖</div>Aucune demande</div>';
+  }
   
-  document.getElementById('rides').innerHTML=html;
+  document.getElementById('rides').innerHTML = html;
 }
 
-function makeRide(r,isPending){
-  var status={pending:'En attente',accepted:'En cours',done:'Terminée'}[r.status];
-  var color={pending:'var(--gold)',accepted:'var(--green)',done:'var(--muted)'}[r.status];
-  var html='<div class="ride '+(r.status!=='pending'?r.status:'')+'" style="border-left-color:'+color+'">';
-  html+='<div class="ride-name">👤 '+r.name+' <span style="font-size:10px;color:var(--muted)">('+status+')</span></div>';
-  html+='<div class="ride-info">';
-  html+='<div class="ride-box"><div class="ride-box-label">🟢 Départ</div><div class="ride-box-val">'+r.from+'</div></div>';
-  html+='<div class="ride-box"><div class="ride-box-label">🔴 Arrivée</div><div class="ride-box-val">'+r.to+'</div></div>';
-  html+='</div>';
-  html+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 '+r.time+' • 👥 '+r.pax+' passager'+(r.pax>1?'s':'')+' </div>';
+function rideCard(r, isPending){
+  let color = r.status === 'pending' ? 'var(--gold)' : r.status === 'accepted' ? 'var(--green)' : 'var(--muted)';
+  let html = '<div class="ride" style="border-left-color:'+color+'">';
+  html += '<div class="ride-name">👤 '+r.name+'</div>';
+  html += '<div class="ride-info">';
+  html += '<div class="ride-box"><div class="ride-box-label">🟢 Départ</div><div class="ride-box-val">'+r.from+'</div></div>';
+  html += '<div class="ride-box"><div class="ride-box-label">🔴 Arrivée</div><div class="ride-box-val">'+r.to+'</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 '+r.time+' • 👥 '+r.pax+' passager'+(r.pax > 1 ? 's' : '')+'</div>';
+  
   if(isPending){
-    html+='<div class="ride-btns">';
-    html+='<button class="btn btn-ok" onclick="accept(\''+r.key+'\')">✅ Accepter</button>';
-    html+='<button class="btn btn-no" onclick="refuse(\''+r.key+'\')">✗ Refuser</button>';
-    html+='</div>';
-  }else if(r.status==='accepted'){
-    html+='<div class="ride-btns"><button class="btn btn-done" onclick="done(\''+r.key+'\')">🏁 Terminée</button></div>';
+    html += '<div class="ride-btns">';
+    html += '<button class="btn btn-ok" type="button" onclick="accept(\''+r.key+'\')">✅ Accepter</button>';
+    html += '<button class="btn btn-no" type="button" onclick="refuse(\''+r.key+'\')">✗ Refuser</button>';
+    html += '</div>';
+  } else if(r.status === 'accepted'){
+    html += '<div class="ride-btns"><button class="btn btn-done" type="button" onclick="finish(\''+r.key+'\')">🏁 Terminée</button></div>';
   }
-  html+='</div>';
+  
+  html += '</div>';
   return html;
 }
 
@@ -153,11 +158,13 @@ function refuse(key){
   db.ref('rides/'+key).remove();
 }
 
-function done(key){
+function finish(key){
   db.ref('rides/'+key+'/status').set('done');
 }
 
-document.getElementById('pwd').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
+document.getElementById('pwd').addEventListener('keypress', e => {
+  if(e.key === 'Enter') login();
+});
 </script>
 </body>
 </html>
