@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ALLOTAXI - Chauffeur</title>
+<title>Allô Taxi - Chauffeur</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0d1117;color:#e6edf3;font-family:Arial,sans-serif;min-height:100vh;padding:20px}
@@ -44,14 +44,14 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 
 <div class="modal" id="modal">
   <div class="mbox">
-    <h2>🚗 Chauffeur</h2>
+    <h2>🚗 Allô Taxi</h2>
     <p>Entrez le mot de passe</p>
     <input id="pwd" type="password" placeholder="Mot de passe"/>
     <button type="button" onclick="login()">Accéder</button>
   </div>
 </div>
 
-<h1>🚗 TaxiNow Chauffeur</h1>
+<h1>🚗 Allô Taxi - Chauffeur</h1>
 <div class="sub" id="status">Connexion...</div>
 
 <div class="stats">
@@ -113,7 +113,6 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
     document.getElementById('cnt-d').textContent = done.length;
 
     let html = '';
-
     if(pending.length > 0){
       html += '<div class="section-title">🔔 Nouvelles demandes</div>';
       pending.forEach(r => html += card(r));
@@ -129,7 +128,6 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
     if(arr.length === 0){
       html = '<div class="empty"><div style="font-size:48px;margin-bottom:12px">🚖</div>Aucune demande pour le moment</div>';
     }
-
     document.getElementById('content').innerHTML = html;
   }
 
@@ -151,22 +149,15 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
       html += '<button class="btn btn-no" onclick="refuse(\''+r.key+'\')">✗ Refuser</button>';
       html += '</div>';
     } else if(r.status === 'accepted'){
-      html += '<div class="btns"><button class="btn btn-done" onclick="finish(\''+r.key+'\')">🏁 Course terminée</button></div>';
+      html += '<div class="ride-btns"><button class="btn btn-done" onclick="finish(\''+r.key+'\')">🏁 Course terminée</button></div>';
     }
-    
     html += '</div>';
     return html;
   }
 
-  window.accept = function(key){
-    update(ref(db, 'rides/'+key), {status: 'accepted'});
-  }
-  window.refuse = function(key){
-    remove(ref(db, 'rides/'+key));
-  }
-  window.finish = function(key){
-    update(ref(db, 'rides/'+key), {status: 'done'});
-  }
+  window.accept = function(key){ update(ref(db, 'rides/'+key), {status: 'accepted'}); }
+  window.refuse = function(key){ remove(ref(db, 'rides/'+key)); }
+  window.finish = function(key){ update(ref(db, 'rides/'+key), {status: 'done'}); }
 </script>
 </body>
 </html>
