@@ -21,7 +21,7 @@
     .msg.me .bubble{background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:600}
     #bar{padding:10px 14px;display:flex;gap:8px;border-top:1px solid var(--panel)}
     #inp{flex:1;background:var(--panel);border:1px solid var(--panel);border-radius:12px;padding:11px 14px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px}
-    #sbtn{width:44px;height:44px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;cursor:pointer;font-size:18px}
+    #sbtn{width:44px;height:44px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;cursor:pointer;font-size:18px;font-weight:700}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:999}
     .modal.hide{display:none}
     .mbox{background:var(--card);border-radius:20px;padding:24px;width:100%;max-width:360px;text-align:center}
@@ -35,8 +35,8 @@
 
 <div class="modal" id="modal">
   <div class="mbox">
-    <h2>🔑 Clé API</h2>
-    <p>Entrez votre clé Anthropic</p>
+    <h2>🔑 Configuration</h2>
+    <p>Votre clé API Anthropic</p>
     <input id="key" type="password" placeholder="sk-ant-..."/>
     <button onclick="saveKey()">Démarrer 🚖</button>
   </div>
@@ -54,9 +54,25 @@
   <button id="sbtn" onclick="send()">➤</button>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
+  authDomain: "taxiamo-ac9f0.firebaseapp.com",
+  databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
+  projectId: "taxiamo-ac9f0",
+  storageBucket: "taxiamo-ac9f0.appspot.com",
+  messagingSenderId: "779304748093",
+  appId: "1:779304748093:web:5f10802b8e47c20981d654"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 var key='', hist=[], busy=false;
-var SYS='Tu es assistant réservation taxi. Collecte prénom, départ, destination, heure, passagers. Quand complet, réponds JSON: {"ok":true,"name":"X","from":"Y","to":"Z","time":"H","pax":N}';
+var SYS='Tu es assistant réservation taxi. Collecte: prénom, départ, destination, heure, passagers. Quand complet, réponds UNIQUEMENT ce JSON (sans markdown): {"ok":true,"name":"X","from":"Y","to":"Z","time":"H","pax":N}';
 
 function saveKey(){
   var k=document.getElementById('key').value.trim();
@@ -82,22 +98,23 @@ function send(){
   })
   .then(r=>r.json())
   .then(d=>{
-    var rep=d.content?d.content[0].text:'Erreur';
+    var rep=d.content[0].text;
     var clean=rep.replace(/```json/g,'').replace(/```/g,'').trim();
     try{
       var j=JSON.parse(clean);
       if(j.ok){
-        var rides=JSON.parse(localStorage.getItem('taxinow_rides')||'[]');
-        rides.unshift({id:Date.now(),name:j.name,from:j.from,to:j.to,time:j.time,pax:j.pax,status:'pending'});
-        localStorage.setItem('taxinow_rides',JSON.stringify(rides));
-        addMsg('✅ Course réservée!','bot');
+        var rid=Date.now();
+        db.ref('rides').child(rid).set({id:rid,name:j.name,from:j.from,to:j.to,time:j.time,pax:j.pax,status:'pending',createdAt:new Date().toISOString()});
+        addMsg('✅ Course réservée! Un chauffeur arrive bientôt.','bot');
+        hist=[];
+        document.getElementById('msgs').innerHTML='<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Quel est votre prénom?</div></div>';
         return;
       }
     }catch(e){}
     hist.push({role:'assistant',content:rep});
     addMsg(rep,'bot');
   })
-  .catch(e=>{addMsg('Erreur!','bot');})
+  .catch(e=>{addMsg('Erreur API!','bot');console.log(e);})
   .finally(()=>{busy=false;});
 }
 
