@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>TaxiNow Chauffeur</title>
+  <meta name="theme-color" content="#f0a500"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+    :root{--bg:#0d1117;--card:#161b22;--panel:#21262d;--border:#30363d;--gold:#f0a500;--green:#3fb950;--red:#f85149;--blue:#58a6ff;--text:#e6edf3;--muted:#8b949e}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+    #topbar{display:flex;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;gap:10px}
+    .logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f0a500,#c47f00);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .logo-text{font-weight:800;font-size:17px}.logo-sub{font-size:10px;color:var(--gold);font-weight:600}
+    #content{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+    .sgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .scard{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+    .snum{font-size:24px;font-weight:800}.slbl{font-size:10px;color:var(--muted);margin-top:2px}
+    .stitle{font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+    .rcard{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .rcard.pend{border-color:rgba(240,165,0,0.4);box-shadow:0 0 20px rgba(240,165,0,0.08)}
+    .rhead{display:flex;justify-content:space-between;align-items:center}
+    .rname{font-weight:700;font-size:15px;display:flex;align-items:center;gap:7px}
+    .badge{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase}
+    .bp{background:rgba(240,165,0,0.15);color:var(--gold);border:1px solid rgba(240,165,0,0.3)}
+    .ba{background:rgba(63,185,80,0.15);color:var(--green);border:1px solid rgba(63,185,80,0.3)}
+    .bd{background:rgba(139,148,158,0.15);color:var(--muted);border:1px solid rgba(139,148,158,0.3)}
+    .br{background:rgba(248,81,73,0.15);color:var(--red);border:1px solid rgba(248,81,73,0.3)}
+    .rtime{font-size:11px;color:var(--muted)}
+    .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .rbox{background:var(--bg);border-radius:10px;padding:9px 12px}
+    .rlbl{font-size:10px;color:var(--muted);margin-bottom:3px}.rval{font-size:13px;font-weight:600}
+    .rmeta{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+    .ract{display:flex;gap:8px}
+    .btn{flex:1;padding:10px;border-radius:10px;border:none;font-family:'Sora',sans-serif;font-weight:700;font-size:13px;cursor:pointer}
+    .bac{background:linear-gradient(135deg,var(--green),#2ea043);color:#fff}
+    .brf{background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.3);color:var(--red)}
+    .bdn{background:linear-gradient(135deg,var(--blue),#1f6feb);color:#fff}
+    .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+    .empty-icon{font-size:52px;margin-bottom:14px}
+    .empty-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+    .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 2s infinite}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px}
+    .modal.hide{display:none}
+    .mbox{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:360px}
+    .mtitle{font-size:18px;font-weight:800;margin-bottom:8px}
+    .msub{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+    .minp{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-family:'Sora',sans-serif;outline:none;margin-bottom:12px}
+    .mbtn{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-family:'Sora',sans-serif;font-weight:700;font-size:14px;cursor:pointer}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  </style>
+</head>
+<body>
+
+<div class="modal" id="pwd-modal">
+  <div class="mbox">
+    <div class="mtitle">🚗 Espace Chauffeur</div>
+    <div class="msub">Entrez le mot de passe chauffeur pour accéder.</div>
+    <input class="minp" id="pwd-inp" type="password" placeholder="Mot de passe..."/>
+    <button class="mbtn" id="pwd-ok">Accéder</button>
+  </div>
+</div>
+
+<div id="topbar">
+  <div class="logo-icon">🚗</div>
+  <div>
+    <div class="logo-text">TaxiNow</div>
+    <div class="logo-sub"><span class="pulse"></span>Chauffeur</div>
+  </div>
+</div>
+
+<div id="content">
+  <div class="sgrid" id="sg"></div>
+  <div id="rl"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
+  authDomain: "taxiamo-ac9f0.firebaseapp.com",
+  databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
+  projectId: "taxiamo-ac9f0",
+  storageBucket: "taxiamo-ac9f0.appspot.com",
+  messagingSenderId: "779304748093",
+  appId: "1:779304748093:web:5f10802b8e47c20981d654"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const PWD = 'taxi2026';
+let authenticated = false;
+
+function checkPwd() {
+  if (document.getElementById('pwd-inp').value === PWD) {
+    authenticated = true;
+    document.getElementById('pwd-modal').classList.add('hide');
+    render();
+    setInterval(render, 3000);
+  } else {
+    alert('Mot de passe incorrect !');
+  }
+}
+
+document.getElementById('pwd-ok').addEventListener('click', checkPwd);
+document.getElementById('pwd-inp').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkPwd();
+});
+
+function render() {
+  if (!authenticated) return;
+  
+  db.ref('rides').once('value', function(snapshot) {
+    var allRides = [];
+    snapshot.forEach(function(child) {
+      allRides.push({
+        key: child.key,
+        id: child.val().id,
+        name: child.val().name,
+        from: child.val().from,
+        to: child.val().to,
+        time: child.val().time,
+        pax: child.val().pax,
+        status: child.val().status,
+        at: child.val().at
+      });
+    });
+
+    var p = allRides.filter(function(r) { return r.status === 'pending'; });
+    var a = allRides.filter(function(r) { return r.status === 'accepted'; });
+    var d = allRides.filter(function(r) { return r.status === 'done' || r.status === 'refused'; });
+
+    document.getElementById('sg').innerHTML =
+      '<div class="scard"><div class="snum" style="color:var(--gold)">' + p.length + '</div><div class="slbl">En attente</div></div>' +
+      '<div class="scard"><div class="snum" style="color:var(--green)">' + a.length + '</div><div class="slbl">En cours</div></div>' +
+      '<div class="scard"><div class="snum" style="color:var(--muted)">' + d.length + '</div><div class="slbl">Terminées</div></div>';
+
+    var rl = document.getElementById('rl');
+    if (!allRides.length) {
+      rl.innerHTML = '<div class="empty"><div class="empty-icon">🚖</div><div class="empty-title">Aucune demande</div><div>En attente de courses...</div></div>';
+      return;
+    }
+
+    var h = '';
+    if (p.length) h += '<div class="stitle" style="color:var(--gold)">🔔 Nouvelles (' + p.length + ')</div>' + p.map(rc).join('');
+    if (a.length) h += '<div class="stitle" style="color:var(--green);margin-top:8px">🚗 En cours (' + a.length + ')</div>' + a.map(rc).join('');
+    if (d.length) h += '<div class="stitle" style="color:var(--muted);margin-top:8px">Historique (' + d.length + ')</div>' + d.map(rc).join('');
+    rl.innerHTML = h;
+  });
+}
+
+function rc(r) {
+  var bc = {pending: 'bp', accepted: 'ba', done: 'bd', refused: 'br'}[r.status];
+  var bl = {pending: 'En attente', accepted: 'En cours', done: 'Terminée', refused: 'Refusée'}[r.status];
+  var act = '';
+  if (r.status === 'pending') {
+    act = '<div class="ract"><button class="btn bac" onclick="upd(\'' + r.key + '\',\'accepted\')">✅ Accepter</button><button class="btn brf" onclick="upd(\'' + r.key + '\',\'refused\')">✗ Refuser</button></div>';
+  }
+  if (r.status === 'accepted') {
+    act = '<div class="ract"><button class="btn bdn" onclick="upd(\'' + r.key + '\',\'done\')">🏁 Terminée</button></div>';
+  }
+  return '<div class="rcard ' + (r.status === 'pending' ? 'pend' : '') + '"><div class="rhead"><div class="rname">👤 ' + r.name + ' <span class="badge ' + bc + '">' + bl + '</span></div><div class="rtime">' + r.at + '</div></div><div class="rgrid"><div class="rbox"><div class="rlbl">🟢 DÉPART</div><div class="rval">' + r.from + '</div></div><div class="rbox"><div class="rlbl">🔴 ARRIVÉE</div><div class="rval">' + r.to + '</div></div></div><div class="rmeta">🕐 ' + r.time + ' &nbsp;•&nbsp; 👥 ' + r.pax + ' passager' + (r.pax > 1 ? 's' : '') + '</div>' + act + '</div>';
+}
+
+function upd(key, status) {
+  db.ref('rides').child(key).update({status: status}, function(error) {
+    if (error) {
+      alert('Erreur lors de la mise à jour');
+    } else {
+      render();
+    }
+  });
+}
+</script>
+</body>
+</html>
