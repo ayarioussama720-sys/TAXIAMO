@@ -61,30 +61,44 @@
   <div id="rides"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
+  authDomain: "taxiamo-ac9f0.firebaseapp.com",
+  databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
+  projectId: "taxiamo-ac9f0",
+  storageBucket: "taxiamo-ac9f0.appspot.com",
+  messagingSenderId: "779304748093",
+  appId: "1:779304748093:web:5f10802b8e47c20981d654"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 const PWD='taxi2026';
+var rides={};
 
 function checkPwd(){
   if(document.getElementById('pwd').value===PWD){
     document.getElementById('modal').classList.add('hide');
-    render();
-    setInterval(render,3000);
+    listenRides();
   }else{alert('Incorrect!');}
 }
 
-function getRides(){
-  try{return JSON.parse(localStorage.getItem('taxinow_rides')||'[]');}catch(e){return[];}
-}
-
-function saveRides(r){
-  localStorage.setItem('taxinow_rides',JSON.stringify(r));
+function listenRides(){
+  db.ref('rides').on('value',snap=>{
+    rides=snap.val()||{};
+    render();
+  });
 }
 
 function render(){
-  var rides=getRides();
-  var p=rides.filter(r=>r.status==='pending');
-  var a=rides.filter(r=>r.status==='accepted');
-  var d=rides.filter(r=>r.status==='done');
+  var arr=Object.entries(rides).map(([k,v])=>({...v,key:k}));
+  var p=arr.filter(r=>r.status==='pending');
+  var a=arr.filter(r=>r.status==='accepted');
+  var d=arr.filter(r=>r.status==='done');
   
   document.getElementById('stats').innerHTML=
     '<div class="stat"><div class="stat-num" style="color:var(--gold)">'+p.length+'</div><div class="stat-txt">En attente</div></div>'+
@@ -104,7 +118,7 @@ function render(){
     html+='<div class="title" style="color:var(--muted);margin-top:8px">Terminées</div>';
     d.forEach(r=>html+=makeRide(r,false));
   }
-  if(!rides.length) html='<div class="empty"><div style="font-size:52px;margin-bottom:14px">🚖</div>Aucune demande</div>';
+  if(!arr.length) html='<div class="empty"><div style="font-size:52px;margin-bottom:14px">🚖</div>Aucune demande</div>';
   
   document.getElementById('rides').innerHTML=html;
 }
@@ -121,34 +135,26 @@ function makeRide(r,isPending){
   html+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 '+r.time+' • 👥 '+r.pax+' passager'+(r.pax>1?'s':'')+' </div>';
   if(isPending){
     html+='<div class="ride-btns">';
-    html+='<button class="btn btn-ok" onclick="accept('+r.id+')">✅ Accepter</button>';
-    html+='<button class="btn btn-no" onclick="refuse('+r.id+')">✗ Refuser</button>';
+    html+='<button class="btn btn-ok" onclick="accept(\''+r.key+'\')">✅ Accepter</button>';
+    html+='<button class="btn btn-no" onclick="refuse(\''+r.key+'\')">✗ Refuser</button>';
     html+='</div>';
   }else if(r.status==='accepted'){
-    html+='<div class="ride-btns"><button class="btn btn-done" onclick="done('+r.id+')">🏁 Terminée</button></div>';
+    html+='<div class="ride-btns"><button class="btn btn-done" onclick="done(\''+r.key+'\')">🏁 Terminée</button></div>';
   }
   html+='</div>';
   return html;
 }
 
-function accept(id){
-  var rides=getRides();
-  rides=rides.map(r=>r.id===id?{...r,status:'accepted'}:r);
-  saveRides(rides);
-  render();
+function accept(key){
+  db.ref('rides/'+key+'/status').set('accepted');
 }
 
-function refuse(id){
-  var rides=getRides().filter(r=>r.id!==id);
-  saveRides(rides);
-  render();
+function refuse(key){
+  db.ref('rides/'+key).remove();
 }
 
-function done(id){
-  var rides=getRides();
-  rides=rides.map(r=>r.id===id?{...r,status:'done'}:r);
-  saveRides(rides);
-  render();
+function done(key){
+  db.ref('rides/'+key+'/status').set('done');
 }
 
 document.getElementById('pwd').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
