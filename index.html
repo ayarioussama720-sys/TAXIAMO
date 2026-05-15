@@ -28,37 +28,37 @@
     .mbox h2{font-size:18px;margin-bottom:8px}
     .mbox p{font-size:13px;color:var(--muted);margin-bottom:20px}
     .mbox input{width:100%;padding:12px;border-radius:12px;border:none;background:var(--panel);color:var(--text);margin-bottom:12px;font-family:'Sora',sans-serif}
-    .mbox button{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif}
+    .mbox button{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;font-size:14px}
   </style>
 </head>
 <body>
 
 <div class="modal" id="modal">
   <div class="mbox">
-    <h2>🔑 Configuration</h2>
-    <p>Votre clé API Anthropic</p>
-    <input id="key" type="password" placeholder="sk-ant-..."/>
-    <button onclick="saveKey()">Démarrer 🚖</button>
+    <h2>🔑 Clé API</h2>
+    <p>Entrez votre clé Anthropic</p>
+    <input id="apikey" type="password" placeholder="sk-ant-..."/>
+    <button type="button" onclick="startApp()">Démarrer</button>
   </div>
 </div>
 
 <div id="topbar">
   <div class="logo-icon">🚖</div>
-  <div class="logo-text">TaxiNow Client</div>
+  <div class="logo-text">TaxiNow</div>
 </div>
 
 <div id="msgs"></div>
 
 <div id="bar">
-  <input id="inp" type="text" placeholder="Votre message..."/>
-  <button id="sbtn" onclick="send()">➤</button>
+  <input id="inp" type="text" placeholder="Message..."/>
+  <button id="sbtn" type="button">➤</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
 
 <script>
-const firebaseConfig = {
+const config = {
   apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
   authDomain: "taxiamo-ac9f0.firebaseapp.com",
   databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
@@ -68,68 +68,113 @@ const firebaseConfig = {
   appId: "1:779304748093:web:5f10802b8e47c20981d654"
 };
 
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(config);
 const db = firebase.database();
 
-var key='', hist=[], busy=false;
-var SYS='Tu es assistant réservation taxi. Collecte: prénom, départ, destination, heure, passagers. Quand complet, réponds UNIQUEMENT ce JSON (sans markdown): {"ok":true,"name":"X","from":"Y","to":"Z","time":"H","pax":N}';
+let apiKey = '';
+let history = [];
+let busy = false;
 
-function saveKey(){
-  var k=document.getElementById('key').value.trim();
-  if(!k.startsWith('sk-ant-')){alert('Clé invalide!');return;}
-  key=k;
-  localStorage.setItem('taxinow_key',k);
+function startApp(){
+  const key = document.getElementById('apikey').value.trim();
+  if(!key.startsWith('sk-ant-')){
+    alert('Clé invalide');
+    return;
+  }
+  apiKey = key;
+  localStorage.setItem('apikey', key);
   document.getElementById('modal').classList.add('hide');
-  document.getElementById('msgs').innerHTML='<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Quel est votre prénom?</div></div>';
+  document.getElementById('msgs').innerHTML = '<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Je suis votre assistant de réservation. Quel est votre prénom?</div></div>';
 }
 
 function send(){
-  var txt=document.getElementById('inp').value.trim();
-  if(!txt||busy||!key)return;
-  document.getElementById('inp').value='';
-  hist.push({role:'user',content:txt});
-  addMsg(txt,'me');
-  busy=true;
+  const text = document.getElementById('inp').value.trim();
+  if(!text || busy || !apiKey) return;
   
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,system:SYS,messages:hist})
+  document.getElementById('inp').value = '';
+  addMsg(text, 'me');
+  history.push({role: 'user', content: text});
+  busy = true;
+  
+  const system = 'Tu es assistant de réservation taxi. Collecte: prénom, départ, destination, heure, passagers. Quand complet, réponds UNIQUEMENT: {"ok":true,"name":"X","from":"Y","to":"Z","time":"H","pax":N}';
+  
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      system: system,
+      messages: history
+    })
   })
-  .then(r=>r.json())
-  .then(d=>{
-    var rep=d.content[0].text;
-    var clean=rep.replace(/```json/g,'').replace(/```/g,'').trim();
-    try{
-      var j=JSON.parse(clean);
-      if(j.ok){
-        var rid=Date.now();
-        db.ref('rides').child(rid).set({id:rid,name:j.name,from:j.from,to:j.to,time:j.time,pax:j.pax,status:'pending',createdAt:new Date().toISOString()});
-        addMsg('✅ Course réservée! Un chauffeur arrive bientôt.','bot');
-        hist=[];
-        document.getElementById('msgs').innerHTML='<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Quel est votre prénom?</div></div>';
+  .then(r => r.json())
+  .then(data => {
+    const reply = data.content[0].text;
+    try {
+      const json = JSON.parse(reply);
+      if(json.ok){
+        db.ref('rides').push({
+          name: json.name,
+          from: json.from,
+          to: json.to,
+          time: json.time,
+          pax: json.pax,
+          status: 'pending',
+          created: new Date().toISOString()
+        });
+        addMsg('✅ Course réservée!', 'bot');
+        history = [];
+        document.getElementById('msgs').innerHTML = '<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Je suis votre assistant de réservation. Quel est votre prénom?</div></div>';
         return;
       }
     }catch(e){}
-    hist.push({role:'assistant',content:rep});
-    addMsg(rep,'bot');
+    
+    history.push({role: 'assistant', content: reply});
+    addMsg(reply, 'bot');
   })
-  .catch(e=>{addMsg('Erreur API!','bot');console.log(e);})
-  .finally(()=>{busy=false;});
+  .catch(e => {
+    addMsg('Erreur!', 'bot');
+    console.error(e);
+  })
+  .finally(() => {
+    busy = false;
+  });
 }
 
-function addMsg(txt,role){
-  var d=document.createElement('div');
-  d.className='msg '+role;
-  d.innerHTML=(role==='bot'?'<div class="avatar">🚖</div>':'')+'<div class="bubble">'+txt+'</div>';
-  document.getElementById('msgs').appendChild(d);
-  document.getElementById('msgs').scrollTop=document.getElementById('msgs').scrollHeight;
+function addMsg(txt, role){
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  if(role === 'bot'){
+    div.innerHTML = '<div class="avatar">🚖</div><div class="bubble">'+txt+'</div>';
+  } else {
+    div.innerHTML = '<div class="bubble">'+txt+'</div>';
+  }
+  document.getElementById('msgs').appendChild(div);
+  document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
 }
 
-window.onload=function(){
-  var k=localStorage.getItem('taxinow_key');
-  if(k){key=k;document.getElementById('modal').classList.add('hide');}
-};
+document.getElementById('sbtn').addEventListener('click', send);
+document.getElementById('inp').addEventListener('keypress', e => {
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    send();
+  }
+});
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('apikey');
+  if(saved){
+    apiKey = saved;
+    document.getElementById('modal').classList.add('hide');
+    document.getElementById('msgs').innerHTML = '<div class="msg bot"><div class="avatar">🚖</div><div class="bubble">Bonjour! Je suis votre assistant de réservation. Quel est votre prénom?</div></div>';
+  }
+});
 </script>
 </body>
 </html>
