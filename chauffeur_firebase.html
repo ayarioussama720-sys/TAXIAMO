@@ -25,14 +25,14 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 .ride-box-label{font-size:10px;color:#8b949e;margin-bottom:3px}
 .ride-box-val{font-size:13px;font-weight:600}
 .ride-detail{font-size:12px;color:#8b949e;margin-bottom:8px}
-.distance-box{background:#21262d;border-radius:10px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.distance-box{background:#21262d;border-radius:10px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-between}
 .distance-label{font-size:11px;color:#8b949e}
 .distance-val{font-size:15px;font-weight:700;color:#58a6ff}
 .btns{display:flex;gap:8px}
 .btn{flex:1;padding:11px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer}
-.btn-ok{background:linear-gradient(135deg,#3fb950,#2ea043);color:#fff}
-.btn-no{background:rgba(248,81,73,0.15);border:1px solid rgba(248,81,73,0.4);color:#f85149}
-.btn-done{background:linear-gradient(135deg,#58a6ff,#1f6feb);color:#fff}
+.btn-ok{background:#3fb950;color:#fff}
+.btn-no{border:1px solid #f85149;background:transparent;color:#f85149}
+.btn-done{background:#58a6ff;color:#fff}
 .empty{text-align:center;padding:60px 20px;color:#8b949e}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:999}
 .modal.hide{display:none}
@@ -40,9 +40,8 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 .mbox h2{font-size:20px;margin-bottom:8px}
 .mbox p{font-size:13px;color:#8b949e;margin-bottom:20px}
 .mbox input{width:100%;padding:12px;border-radius:10px;border:none;background:#21262d;color:#e6edf3;font-size:14px;margin-bottom:12px;text-align:center}
-.mbox button{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;font-size:15px;cursor:pointer}
-.notif{position:fixed;top:20px;right:20px;background:#f0a500;color:#000;padding:14px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:9999;display:none;animation:slidein 0.3s ease}
-@keyframes slidein{from{transform:translateX(120%)}to{transform:translateX(0)}}
+.mbox button{width:100%;padding:13px;border-radius:12px;border:none;background:#f0a500;color:#000;font-weight:700;font-size:15px;cursor:pointer}
+.notif{position:fixed;top:20px;right:20px;background:#f0a500;color:#000;padding:14px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:9999;display:none}
 </style>
 </head>
 <body>
@@ -50,13 +49,13 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 <div class="modal" id="modal">
   <div class="mbox">
     <h2>🚗 Allô Taxi</h2>
-    <p>Entrez le mot de passe</p>
-    <input id="pwd" type="password" placeholder="Mot de passe"/>
+    <p>Mot de passe</p>
+    <input id="pwd" type="password" placeholder="taxi2026"/>
     <button type="button" id="loginbtn">Accéder</button>
   </div>
 </div>
 
-<div class="notif" id="notif">🔔 Nouvelle demande de course !</div>
+<div class="notif" id="notif">🔔 Nouvelle demande !</div>
 
 <h1>🚗 Allô Taxi - Chauffeur</h1>
 <div class="sub" id="status">Connexion...</div>
@@ -69,11 +68,32 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 
 <div id="content"><div class="empty">🔒 Connectez-vous</div></div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+<script>
+var db;
+var knownRides = {};
+var firstLoad = true;
+var distCache = {};
+var audioCtx = null;
 
-  const app = initializeApp({
+document.getElementById('loginbtn').addEventListener('click', login);
+document.getElementById('pwd').addEventListener('keypress', function(e){
+  if(e.key === 'Enter') login();
+});
+
+function login(){
+  var pwd = document.getElementById('pwd').value;
+  if(pwd === 'taxi2026'){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    document.getElementById('modal').classList.add('hide');
+    document.getElementById('status').textContent = '🟢 En ligne';
+    initFirebase();
+  } else {
+    alert('Mot de passe incorrect !');
+  }
+}
+
+function initFirebase(){
+  var config = {
     apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
     authDomain: "taxiamo-ac9f0.firebaseapp.com",
     databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
@@ -81,185 +101,162 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
     storageBucket: "taxiamo-ac9f0.appspot.com",
     messagingSenderId: "779304748093",
     appId: "1:779304748093:web:5f10802b8e47c20981d654"
+  };
+  firebase.initializeApp(config);
+  db = firebase.database();
+  db.ref('rides').on('value', function(snap){
+    var data = snap.val() || {};
+    checkNew(data);
+    render(data);
+  });
+}
+
+function checkNew(data){
+  var pending = Object.keys(data).filter(function(k){ return data[k].status === 'pending'; });
+  if(!firstLoad){
+    var isNew = pending.some(function(k){ return !knownRides[k]; });
+    if(isNew){
+      playSound();
+      showNotif();
+    }
+  }
+  knownRides = {};
+  pending.forEach(function(k){ knownRides[k] = true; });
+  firstLoad = false;
+}
+
+function playSound(){
+  try {
+    var notes = [
+      {f:523, t:0, d:0.15},
+      {f:659, t:0.2, d:0.15},
+      {f:784, t:0.4, d:0.3}
+    ];
+    notes.forEach(function(n){
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = n.f;
+      osc.type = 'sine';
+      var t = audioCtx.currentTime + n.t;
+      gain.gain.setValueAtTime(0.5, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + n.d);
+      osc.start(t);
+      osc.stop(t + n.d + 0.05);
+    });
+  } catch(e){}
+}
+
+function showNotif(){
+  var n = document.getElementById('notif');
+  n.style.display = 'block';
+  setTimeout(function(){ n.style.display = 'none'; }, 4000);
+}
+
+function render(data){
+  var arr = Object.keys(data).map(function(k){ return Object.assign({key:k}, data[k]); });
+  arr.sort(function(a,b){ return new Date(b.created) - new Date(a.created); });
+  var pending = arr.filter(function(r){ return r.status === 'pending'; });
+  var accepted = arr.filter(function(r){ return r.status === 'accepted'; });
+  var done = arr.filter(function(r){ return r.status === 'done'; });
+
+  document.getElementById('cnt-p').textContent = pending.length;
+  document.getElementById('cnt-a').textContent = accepted.length;
+  document.getElementById('cnt-d').textContent = done.length;
+
+  var html = '';
+  if(pending.length){
+    html += '<div class="section-title">🔔 Nouvelles demandes</div>';
+    pending.forEach(function(r){ html += card(r); });
+  }
+  if(accepted.length){
+    html += '<div class="section-title" style="color:#3fb950">🚗 En cours</div>';
+    accepted.forEach(function(r){ html += card(r); });
+  }
+  if(done.length){
+    html += '<div class="section-title" style="color:#8b949e">✅ Terminées</div>';
+    done.forEach(function(r){ html += card(r); });
+  }
+  if(!arr.length){
+    html = '<div class="empty"><div style="font-size:48px;margin-bottom:12px">🚖</div>Aucune demande</div>';
+  }
+  document.getElementById('content').innerHTML = html;
+
+  document.querySelectorAll('[data-accept]').forEach(function(btn){
+    btn.addEventListener('click', function(){ db.ref('rides/'+btn.dataset.accept+'/status').set('accepted'); });
+  });
+  document.querySelectorAll('[data-refuse]').forEach(function(btn){
+    btn.addEventListener('click', function(){ db.ref('rides/'+btn.dataset.refuse).remove(); });
+  });
+  document.querySelectorAll('[data-finish]').forEach(function(btn){
+    btn.addEventListener('click', function(){ db.ref('rides/'+btn.dataset.finish+'/status').set('done'); });
   });
 
-  const db = getDatabase(app);
-  const distanceCache = {};
-  let knownRides = new Set();
-  let firstLoad = true;
-  let audioCtx = null;
-
-  function playUberSound(){
-    try {
-      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      
-      const notes = [
-        {freq: 523, start: 0, dur: 0.15},
-        {freq: 659, start: 0.18, dur: 0.15},
-        {freq: 784, start: 0.36, dur: 0.25},
-        {freq: 659, start: 0.65, dur: 0.15},
-        {freq: 784, start: 0.83, dur: 0.35},
-      ];
-
-      notes.forEach(n => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = n.freq;
-        osc.type = 'sine';
-        const t = audioCtx.currentTime + n.start;
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + n.dur);
-        osc.start(t);
-        osc.stop(t + n.dur + 0.05);
-      });
-    } catch(e) {}
-  }
-
-  function showNotif(){
-    const n = document.getElementById('notif');
-    n.style.display = 'block';
-    setTimeout(() => n.style.display = 'none', 5000);
-  }
-
-  document.getElementById('loginbtn').addEventListener('click', login);
-  document.getElementById('pwd').addEventListener('keypress', e => {
-    if(e.key === 'Enter') login();
-  });
-
-  function login(){
-    const pwd = document.getElementById('pwd').value;
-    if(pwd === 'taxi2026'){
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      document.getElementById('modal').classList.add('hide');
-      document.getElementById('status').textContent = '🟢 En ligne - Mise à jour en temps réel';
-      startListening();
+  pending.forEach(function(r){
+    var cacheKey = r.from + '|' + r.to;
+    if(distCache[cacheKey]){
+      updateDist(r.key, distCache[cacheKey]);
     } else {
-      alert('Mot de passe incorrect !');
+      calcDist(r.from, r.to, r.key);
     }
-  }
+  });
+}
 
-  function startListening(){
-    onValue(ref(db, 'rides'), snap => {
-      const data = snap.val() || {};
-      const currentPending = Object.entries(data)
-        .filter(([k,v]) => v.status === 'pending')
-        .map(([k]) => k);
-      
-      if(!firstLoad){
-        const newRides = currentPending.filter(k => !knownRides.has(k));
-        if(newRides.length > 0){
-          playUberSound();
-          showNotif();
+function card(r){
+  var color = r.status === 'pending' ? '#f0a500' : r.status === 'accepted' ? '#3fb950' : '#8b949e';
+  var html = '<div class="ride '+(r.status !== 'pending' ? r.status : '')+'" style="border-left-color:'+color+'">';
+  html += '<div class="ride-header"><div class="ride-name">👤 '+r.name+'</div><div class="ride-phone">📞 '+r.phone+'</div></div>';
+  html += '<div class="ride-grid">';
+  html += '<div class="ride-box"><div class="ride-box-label">🟢 Départ</div><div class="ride-box-val">'+r.from+'</div></div>';
+  html += '<div class="ride-box"><div class="ride-box-label">🔴 Destination</div><div class="ride-box-val">'+r.to+'</div></div>';
+  html += '</div>';
+  html += '<div class="ride-detail">🕐 '+r.time+' • 👥 '+r.pax+' passager'+(r.pax>1?'s':'')+'</div>';
+  html += '<div class="distance-box" id="dist-'+r.key+'"><div><div class="distance-label">📍 Distance</div><div class="distance-val">Calcul...</div></div></div>';
+  if(r.status === 'pending'){
+    html += '<div class="btns"><button class="btn btn-ok" data-accept="'+r.key+'">✅ Accepter</button><button class="btn btn-no" data-refuse="'+r.key+'">✗ Refuser</button></div>';
+  } else if(r.status === 'accepted'){
+    html += '<div class="btns"><button class="btn btn-done" data-finish="'+r.key+'">🏁 Terminée</button></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function calcDist(from, to, key){
+  var q1 = encodeURIComponent(from + ', Quebec, Canada');
+  var q2 = encodeURIComponent(to + ', Quebec, Canada');
+  fetch('https://nominatim.openstreetmap.org/search?q='+q1+'&format=json&limit=1')
+  .then(function(r){ return r.json(); })
+  .then(function(d1){
+    if(!d1.length) return;
+    return fetch('https://nominatim.openstreetmap.org/search?q='+q2+'&format=json&limit=1')
+    .then(function(r){ return r.json(); })
+    .then(function(d2){
+      if(!d2.length) return;
+      var url = 'https://router.project-osrm.org/route/v1/driving/'+d1[0].lon+','+d1[0].lat+';'+d2[0].lon+','+d2[0].lat+'?overview=false';
+      return fetch(url).then(function(r){ return r.json(); }).then(function(rd){
+        if(rd.routes && rd.routes.length){
+          var km = (rd.routes[0].distance/1000).toFixed(1);
+          var mins = Math.round(rd.routes[0].duration/60);
+          var cacheKey = from+'|'+to;
+          distCache[cacheKey] = {km:km, mins:mins};
+          updateDist(key, {km:km, mins:mins});
         }
-      }
-      knownRides = new Set(currentPending);
-      firstLoad = false;
-      render(data);
+      });
     });
+  }).catch(function(){});
+}
+
+function updateDist(key, dist){
+  var el = document.getElementById('dist-'+key);
+  if(el){
+    el.innerHTML = '<div><div class="distance-label">📍 Distance</div><div class="distance-val">'+dist.km+' km</div></div><div><div class="distance-label">⏱ Durée</div><div class="distance-val">'+dist.mins+' min</div></div>';
   }
-
-  async function getDistance(from, to){
-    const cacheKey = from + '|' + to;
-    if(distanceCache[cacheKey]) return distanceCache[cacheKey];
-    try {
-      const geocode = async (address) => {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ', Quebec, Canada')}&format=json&limit=1`);
-        const d = await r.json();
-        if(d.length > 0) return { lat: d[0].lat, lon: d[0].lon };
-        return null;
-      };
-      const [fromCoords, toCoords] = await Promise.all([geocode(from), geocode(to)]);
-      if(!fromCoords || !toCoords) return null;
-      const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${fromCoords.lon},${fromCoords.lat};${toCoords.lon},${toCoords.lat}?overview=false`);
-      const d = await r.json();
-      if(d.routes && d.routes.length > 0){
-        const km = (d.routes[0].distance / 1000).toFixed(1);
-        const mins = Math.round(d.routes[0].duration / 60);
-        const result = { km, mins };
-        distanceCache[cacheKey] = result;
-        return result;
-      }
-    } catch(e) {}
-    return null;
-  }
-
-  async function render(data){
-    const arr = Object.entries(data).map(([k,v]) => ({...v, key:k}))
-      .sort((a,b) => new Date(b.created) - new Date(a.created));
-    const pending = arr.filter(r => r.status === 'pending');
-    const accepted = arr.filter(r => r.status === 'accepted');
-    const done = arr.filter(r => r.status === 'done');
-
-    document.getElementById('cnt-p').textContent = pending.length;
-    document.getElementById('cnt-a').textContent = accepted.length;
-    document.getElementById('cnt-d').textContent = done.length;
-
-    let html = '';
-    if(pending.length > 0){
-      html += '<div class="section-title">🔔 Nouvelles demandes</div>';
-      for(const r of pending){
-        const dist = await getDistance(r.from, r.to);
-        html += card(r, dist);
-      }
-    }
-    if(accepted.length > 0){
-      html += '<div class="section-title" style="color:#3fb950">🚗 En cours</div>';
-      for(const r of accepted){
-        const dist = await getDistance(r.from, r.to);
-        html += card(r, dist);
-      }
-    }
-    if(done.length > 0){
-      html += '<div class="section-title" style="color:#8b949e">✅ Terminées</div>';
-      for(const r of done) html += card(r, null);
-    }
-    if(arr.length === 0){
-      html = '<div class="empty"><div style="font-size:48px;margin-bottom:12px">🚖</div>Aucune demande pour le moment</div>';
-    }
-    document.getElementById('content').innerHTML = html;
-
-    document.querySelectorAll('[data-accept]').forEach(btn => {
-      btn.addEventListener('click', () => update(ref(db, 'rides/'+btn.dataset.accept), {status:'accepted'}));
-    });
-    document.querySelectorAll('[data-refuse]').forEach(btn => {
-      btn.addEventListener('click', () => remove(ref(db, 'rides/'+btn.dataset.refuse)));
-    });
-    document.querySelectorAll('[data-finish]').forEach(btn => {
-      btn.addEventListener('click', () => update(ref(db, 'rides/'+btn.dataset.finish), {status:'done'}));
-    });
-  }
-
-  function card(r, dist){
-    let html = '<div class="ride '+(r.status !== 'pending' ? r.status : '')+'">';
-    html += '<div class="ride-header">';
-    html += '<div class="ride-name">👤 '+r.name+'</div>';
-    html += '<div class="ride-phone">📞 '+r.phone+'</div>';
-    html += '</div>';
-    html += '<div class="ride-grid">';
-    html += '<div class="ride-box"><div class="ride-box-label">🟢 Départ</div><div class="ride-box-val">'+r.from+'</div></div>';
-    html += '<div class="ride-box"><div class="ride-box-label">🔴 Destination</div><div class="ride-box-val">'+r.to+'</div></div>';
-    html += '</div>';
-    html += '<div class="ride-detail">🕐 '+r.time+' &nbsp;•&nbsp; 👥 '+r.pax+' passager'+(r.pax > 1 ? 's' : '')+'</div>';
-    if(dist){
-      html += '<div class="distance-box">';
-      html += '<div><div class="distance-label">📍 Distance</div><div class="distance-val">'+dist.km+' km</div></div>';
-      html += '<div><div class="distance-label">⏱ Durée estimée</div><div class="distance-val">'+dist.mins+' min</div></div>';
-      html += '</div>';
-    }
-    if(r.status === 'pending'){
-      html += '<div class="btns">';
-      html += '<button class="btn btn-ok" data-accept="'+r.key+'">✅ Accepter</button>';
-      html += '<button class="btn btn-no" data-refuse="'+r.key+'">✗ Refuser</button>';
-      html += '</div>';
-    } else if(r.status === 'accepted'){
-      html += '<div class="btns"><button class="btn btn-done" data-finish="'+r.key+'">🏁 Course terminée</button></div>';
-    }
-    html += '</div>';
-    return html;
-  }
+}
 </script>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 </body>
 </html>
