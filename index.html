@@ -122,11 +122,20 @@ function playSound(){
   } catch(e){}
 }
 
+function showTracking(){
+  document.getElementById('form-view').style.display = 'none';
+  document.getElementById('tracking-view').style.display = 'block';
+}
+
 function watchRide(key){
   if(rideListener) db.ref('rides/'+currentRideKey).off('value', rideListener);
   rideListener = db.ref('rides/'+key).on('value', function(snap){
     var ride = snap.val();
-    if(!ride) return;
+    if(!ride){
+      localStorage.removeItem('currentRideKey');
+      resetForm();
+      return;
+    }
     if(ride.status === 'accepted'){
       document.getElementById('step1').className = 'step done';
       document.getElementById('step2').className = 'step accepted';
@@ -136,8 +145,24 @@ function watchRide(key){
       document.getElementById('step1').className = 'step done';
       document.getElementById('step2').className = 'step done';
       document.getElementById('step3').className = 'step accepted';
+      localStorage.removeItem('currentRideKey');
     }
   });
+}
+
+function resetForm(){
+  document.getElementById('form-view').style.display = 'block';
+  document.getElementById('tracking-view').style.display = 'none';
+  document.getElementById('name').value = '';
+  document.getElementById('phone').value = '';
+  document.getElementById('from').value = '';
+  document.getElementById('to').value = '';
+  document.getElementById('time').value = '';
+  document.getElementById('step1').className = 'step active';
+  document.getElementById('step2').className = 'step';
+  document.getElementById('step3').className = 'step';
+  document.getElementById('step2-sub').textContent = 'En attente...';
+  currentRideKey = null;
 }
 
 document.getElementById('sendbtn').addEventListener('click', function(){
@@ -162,8 +187,8 @@ document.getElementById('sendbtn').addEventListener('click', function(){
   });
 
   currentRideKey = newRef.key;
-  document.getElementById('form-view').style.display = 'none';
-  document.getElementById('tracking-view').style.display = 'block';
+  localStorage.setItem('currentRideKey', currentRideKey);
+  showTracking();
   watchRide(currentRideKey);
 });
 
@@ -171,18 +196,17 @@ document.getElementById('newbtn').addEventListener('click', function(){
   if(currentRideKey && rideListener){
     db.ref('rides/'+currentRideKey).off('value', rideListener);
   }
-  document.getElementById('form-view').style.display = 'block';
-  document.getElementById('tracking-view').style.display = 'none';
-  document.getElementById('name').value = '';
-  document.getElementById('phone').value = '';
-  document.getElementById('from').value = '';
-  document.getElementById('to').value = '';
-  document.getElementById('time').value = '';
-  document.getElementById('step1').className = 'step active';
-  document.getElementById('step2').className = 'step';
-  document.getElementById('step3').className = 'step';
-  document.getElementById('step2-sub').textContent = 'En attente...';
-  currentRideKey = null;
+  localStorage.removeItem('currentRideKey');
+  resetForm();
+});
+
+window.addEventListener('load', function(){
+  var saved = localStorage.getItem('currentRideKey');
+  if(saved){
+    currentRideKey = saved;
+    showTracking();
+    watchRide(saved);
+  }
 });
 </script>
 
