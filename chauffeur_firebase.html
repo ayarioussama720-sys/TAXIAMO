@@ -41,6 +41,8 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 .mbox p{font-size:13px;color:#8b949e;margin-bottom:20px}
 .mbox input{width:100%;padding:12px;border-radius:10px;border:none;background:#21262d;color:#e6edf3;font-size:14px;margin-bottom:12px;text-align:center}
 .mbox button{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#f0a500,#c47f00);color:#000;font-weight:700;font-size:15px;cursor:pointer}
+.notif{position:fixed;top:20px;right:20px;background:#f0a500;color:#000;padding:14px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:9999;display:none;animation:slidein 0.3s ease}
+@keyframes slidein{from{transform:translateX(120%)}to{transform:translateX(0)}}
 </style>
 </head>
 <body>
@@ -53,6 +55,8 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
     <button type="button" id="loginbtn">Accéder</button>
   </div>
 </div>
+
+<div class="notif" id="notif">🔔 Nouvelle demande de course !</div>
 
 <h1>🚗 Allô Taxi - Chauffeur</h1>
 <div class="sub" id="status">Connexion...</div>
@@ -81,6 +85,35 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 
   const db = getDatabase(app);
   const distanceCache = {};
+  let knownRides = new Set();
+  let firstLoad = true;
+  let audioCtx = null;
+
+  function playSound(){
+    try {
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      const times = [0, 0.3, 0.6];
+      times.forEach(t => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + t + 0.25);
+        osc.start(audioCtx.currentTime + t);
+        osc.stop(audioCtx.currentTime + t + 0.25);
+      });
+    } catch(e) {}
+  }
+
+  function showNotif(){
+    const n = document.getElementById('notif');
+    n.style.display = 'block';
+    setTimeout(() => n.style.display = 'none', 4000);
+  }
 
   document.getElementById('loginbtn').addEventListener('click', login);
   document.getElementById('pwd').addEventListener('keypress', e => {
@@ -90,6 +123,7 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
   function login(){
     const pwd = document.getElementById('pwd').value;
     if(pwd === 'taxi2026'){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       document.getElementById('modal').classList.add('hide');
       document.getElementById('status').textContent = '🟢 En ligne - Mise à jour en temps réel';
       startListening();
@@ -101,6 +135,21 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
   function startListening(){
     onValue(ref(db, 'rides'), snap => {
       const data = snap.val() || {};
+      
+      const currentPending = Object.entries(data)
+        .filter(([k,v]) => v.status === 'pending')
+        .map(([k]) => k);
+      
+      if(!firstLoad){
+        const newRides = currentPending.filter(k => !knownRides.has(k));
+        if(newRides.length > 0){
+          playSound();
+          showNotif();
+        }
+      }
+      
+      knownRides = new Set(currentPending);
+      firstLoad = false;
       render(data);
     });
   }
@@ -108,7 +157,6 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
   async function getDistance(from, to){
     const cacheKey = from + '|' + to;
     if(distanceCache[cacheKey]) return distanceCache[cacheKey];
-
     try {
       const geocode = async (address) => {
         const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ', Quebec, Canada')}&format=json&limit=1`);
@@ -116,13 +164,10 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
         if(d.length > 0) return { lat: d[0].lat, lon: d[0].lon };
         return null;
       };
-
       const [fromCoords, toCoords] = await Promise.all([geocode(from), geocode(to)]);
       if(!fromCoords || !toCoords) return null;
-
       const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${fromCoords.lon},${fromCoords.lat};${toCoords.lon},${toCoords.lat}?overview=false`);
       const d = await r.json();
-
       if(d.routes && d.routes.length > 0){
         const km = (d.routes[0].distance / 1000).toFixed(1);
         const mins = Math.round(d.routes[0].duration / 60);
@@ -192,14 +237,12 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
     html += '<div class="ride-box"><div class="ride-box-label">🔴 Destination</div><div class="ride-box-val">'+r.to+'</div></div>';
     html += '</div>';
     html += '<div class="ride-detail">🕐 '+r.time+' &nbsp;•&nbsp; 👥 '+r.pax+' passager'+(r.pax > 1 ? 's' : '')+'</div>';
-    
     if(dist){
       html += '<div class="distance-box">';
       html += '<div><div class="distance-label">📍 Distance</div><div class="distance-val">'+dist.km+' km</div></div>';
       html += '<div><div class="distance-label">⏱ Durée estimée</div><div class="distance-val">'+dist.mins+' min</div></div>';
       html += '</div>';
     }
-
     if(r.status === 'pending'){
       html += '<div class="btns">';
       html += '<button class="btn btn-ok" data-accept="'+r.key+'">✅ Accepter</button>';
