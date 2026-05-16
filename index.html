@@ -44,7 +44,7 @@ input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#
     <option value="4">4 passagers</option>
   </select>
   
-  <button class="btn" onclick="submit()">🚖 Envoyer la demande</button>
+  <button class="btn" id="sendbtn">🚖 Envoyer la demande</button>
   
   <div class="success" id="success">
     ✅ Demande envoyée ! Un chauffeur vous contactera bientôt.
@@ -67,6 +67,32 @@ input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#
 
   const db = getDatabase(app);
 
-  window.submit = function(){
+  document.getElementById('sendbtn').addEventListener('click', function(){
     const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone'
+    const phone = document.getElementById('phone').value.trim();
+    const from = document.getElementById('from').value.trim();
+    const to = document.getElementById('to').value.trim();
+    const time = document.getElementById('time').value;
+    const pax = document.getElementById('pax').value;
+
+    if(!name || !phone || !from || !to || !time){
+      alert('Veuillez remplir tous les champs !');
+      return;
+    }
+
+    push(ref(db, 'rides'), {
+      name, phone, from, to, time, pax,
+      status: 'pending',
+      created: new Date().toISOString()
+    }).then(() => {
+      document.getElementById('success').style.display = 'block';
+      document.getElementById('name').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('from').value = '';
+      document.getElementById('to').value = '';
+      document.getElementById('time').value = '';
+    }).catch(e => alert('Erreur: ' + e.message));
+  });
+</script>
+</body>
+</html>
