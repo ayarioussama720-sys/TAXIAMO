@@ -28,6 +28,10 @@ input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#
 </style>
 </head>
 <body>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 <div class="card">
   <div id="form-view">
     <h1>🚖 Allô Taxi</h1>
@@ -82,11 +86,23 @@ input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#
 </div>
 
 <script>
+var firebaseConfig = {
+  apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
+  authDomain: "taxiamo-ac9f0.firebaseapp.com",
+  databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
+  projectId: "taxiamo-ac9f0",
+  storageBucket: "taxiamo-ac9f0.appspot.com",
+  messagingSenderId: "779304748093",
+  appId: "1:779304748093:web:5f10802b8e47c20981d654"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
 var currentRideKey = null;
 var audioCtx = null;
-var db = null;
+var rideListener = null;
 
-function playAcceptSound(){
+function playSound(){
   try {
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     var notes = [{f:523,t:0,d:0.15},{f:659,t:0.2,d:0.15},{f:784,t:0.4,d:0.3}];
@@ -106,29 +122,16 @@ function playAcceptSound(){
   } catch(e){}
 }
 
-function initFirebase(){
-  var config = {
-    apiKey: "AIzaSyDy4F5oXiQz_N4eCJ-kLM09GNFxC414fMNCS4U9F4eU",
-    authDomain: "taxiamo-ac9f0.firebaseapp.com",
-    databaseURL: "https://taxiamo-ac9f0-default-rtdb.firebaseio.com",
-    projectId: "taxiamo-ac9f0",
-    storageBucket: "taxiamo-ac9f0.appspot.com",
-    messagingSenderId: "779304748093",
-    appId: "1:779304748093:web:5f10802b8e47c20981d654"
-  };
-  firebase.initializeApp(config);
-  db = firebase.database();
-}
-
 function watchRide(key){
-  db.ref('rides/'+key).on('value', function(snap){
+  if(rideListener) db.ref('rides/'+currentRideKey).off('value', rideListener);
+  rideListener = db.ref('rides/'+key).on('value', function(snap){
     var ride = snap.val();
     if(!ride) return;
     if(ride.status === 'accepted'){
       document.getElementById('step1').className = 'step done';
       document.getElementById('step2').className = 'step accepted';
-      document.getElementById('step2-sub').textContent = 'Le chauffeur arrive !';
-      playAcceptSound();
+      document.getElementById('step2-sub').textContent = '🚗 Le chauffeur arrive !';
+      playSound();
     } else if(ride.status === 'done'){
       document.getElementById('step1').className = 'step done';
       document.getElementById('step2').className = 'step done';
@@ -152,19 +155,22 @@ document.getElementById('sendbtn').addEventListener('click', function(){
 
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  var ref = db.ref('rides').push({
+  var newRef = db.ref('rides').push({
     name:name, phone:phone, from:from, to:to, time:time, pax:pax,
     status:'pending',
     created: new Date().toISOString()
   });
 
-  currentRideKey = ref.key;
+  currentRideKey = newRef.key;
   document.getElementById('form-view').style.display = 'none';
   document.getElementById('tracking-view').style.display = 'block';
   watchRide(currentRideKey);
 });
 
 document.getElementById('newbtn').addEventListener('click', function(){
+  if(currentRideKey && rideListener){
+    db.ref('rides/'+currentRideKey).off('value', rideListener);
+  }
   document.getElementById('form-view').style.display = 'block';
   document.getElementById('tracking-view').style.display = 'none';
   document.getElementById('name').value = '';
@@ -178,12 +184,7 @@ document.getElementById('newbtn').addEventListener('click', function(){
   document.getElementById('step2-sub').textContent = 'En attente...';
   currentRideKey = null;
 });
-
-initFirebase();
 </script>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 </body>
 </html>
