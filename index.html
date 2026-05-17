@@ -10,9 +10,16 @@ body{background:#0d1117;color:#e6edf3;font-family:Arial,sans-serif;min-height:10
 .card{background:#161b22;border-radius:20px;padding:24px;width:100%;max-width:420px}
 h1{font-size:22px;margin-bottom:6px;color:#f0a500}
 p{font-size:13px;color:#8b949e;margin-bottom:20px}
+.status-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;margin-bottom:20px;font-size:13px;font-weight:700}
+.status-online{background:#1a3a2a;color:#3fb950;border:1px solid #3fb950}
+.status-offline{background:#3a1a1a;color:#f85149;border:1px solid #f85149}
+.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot-online{background:#3fb950}
+.dot-offline{background:#f85149}
 label{font-size:12px;color:#8b949e;display:block;margin-bottom:4px;margin-top:12px}
 input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#21262d;color:#e6edf3;font-size:14px}
 .btn{width:100%;padding:14px;border-radius:12px;border:none;background:#f0a500;color:#000;font-weight:700;font-size:16px;cursor:pointer;margin-top:20px}
+.btn:disabled{background:#444;color:#888;cursor:not-allowed}
 .tracking{display:none;text-align:center;padding:20px 0}
 .tracking h2{font-size:18px;margin-bottom:20px;color:#f0a500}
 .steps{display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
@@ -35,6 +42,10 @@ input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#
 <div class="card">
   <div id="form-view">
     <h1>🚖 Allô Taxi</h1>
+    <div class="status-bar status-offline" id="status-bar">
+      <div class="status-dot dot-offline" id="status-dot"></div>
+      <span id="status-text">Vérification...</span>
+    </div>
     <p>Réservez votre taxi en quelques secondes</p>
     <label>Votre prénom</label>
     <input id="name" type="text" placeholder="Ex: Oussama"/>
@@ -121,6 +132,26 @@ function playSound(){
     });
   } catch(e){}
 }
+
+// Surveille le statut chauffeur en temps réel
+db.ref('chauffeur_status').on('value', function(snap){
+  var online = snap.val() === true;
+  var bar = document.getElementById('status-bar');
+  var dot = document.getElementById('status-dot');
+  var txt = document.getElementById('status-text');
+  var btn = document.getElementById('sendbtn');
+  if(online){
+    bar.className = 'status-bar status-online';
+    dot.className = 'status-dot dot-online';
+    txt.textContent = 'Chauffeur disponible — Prêt à vous servir !';
+    if(btn) btn.disabled = false;
+  } else {
+    bar.className = 'status-bar status-offline';
+    dot.className = 'status-dot dot-offline';
+    txt.textContent = 'Chauffeur hors ligne — Revenez plus tard';
+    if(btn) btn.disabled = true;
+  }
+});
 
 function showTracking(){
   document.getElementById('form-view').style.display = 'none';
@@ -209,6 +240,5 @@ window.addEventListener('load', function(){
   }
 });
 </script>
-
 </body>
 </html>
