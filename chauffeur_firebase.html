@@ -8,19 +8,27 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0d1117;color:#e6edf3;font-family:Arial,sans-serif;min-height:100vh;padding:20px}
 h1{font-size:22px;color:#f0a500;margin-bottom:4px}
-.sub{font-size:13px;color:#8b949e;margin-bottom:20px}
-.tabs{display:flex;gap:8px;margin-bottom:20px}
+.sub{font-size:13px;color:#8b949e;margin-bottom:16px}
+.toggle-bar{display:flex;align-items:center;justify-content:space-between;background:#161b22;border-radius:14px;padding:14px 18px;margin-bottom:16px}
+.toggle-info{display:flex;align-items:center;gap:10px}
+.toggle-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.dot-on{background:#3fb950}
+.dot-off{background:#f85149}
+.toggle-label{font-weight:700;font-size:14px}
+.toggle-btn{padding:10px 22px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer}
+.btn-goon{background:#3fb950;color:#fff}
+.btn-gooff{background:#f85149;color:#fff}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
 .tab{flex:1;padding:10px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer;background:#21262d;color:#8b949e}
 .tab.active{background:#003DA5;color:#fff}
-.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
 .stat{background:#161b22;border-radius:12px;padding:12px;text-align:center}
 .stat-num{font-size:26px;font-weight:800}
 .stat-txt{font-size:10px;color:#8b949e;margin-top:2px}
-.section-title{font-size:11px;font-weight:700;text-transform:uppercase;color:#f0a500;margin:16px 0 8px}
+.section-title{font-size:11px;font-weight:700;text-transform:uppercase;color:#f0a500;margin:12px 0 8px}
 .ride{background:#161b22;border-radius:14px;padding:16px;margin-bottom:10px;border-left:4px solid #f0a500}
 .ride.accepted{border-left-color:#3fb950}
 .ride.done{border-left-color:#8b949e}
-.ride.locked{border-left-color:#f85149;opacity:0.7}
 .ride-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .ride-name{font-weight:700;font-size:16px}
 .ride-phone{font-size:13px;color:#f0a500;font-weight:600}
@@ -37,7 +45,6 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 .btn-ok{background:#3fb950;color:#fff}
 .btn-no{border:1px solid #f85149;background:transparent;color:#f85149}
 .btn-done{background:#58a6ff;color:#fff}
-.locked-badge{background:rgba(248,81,73,0.15);border:1px solid #f85149;border-radius:8px;padding:8px 12px;text-align:center;font-size:12px;color:#f85149;font-weight:700}
 .empty{text-align:center;padding:40px 20px;color:#8b949e}
 .hist-date{font-size:11px;color:#8b949e;margin-bottom:4px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:999}
@@ -64,7 +71,15 @@ h1{font-size:22px;color:#f0a500;margin-bottom:4px}
 <div class="notif" id="notif">🔔 Nouvelle demande !</div>
 
 <h1>🚗 Allô Taxi - Chauffeur</h1>
-<div class="sub" id="status">Connexion...</div>
+<div class="sub" id="sub">Connexion...</div>
+
+<div class="toggle-bar">
+  <div class="toggle-info">
+    <div class="toggle-dot dot-off" id="toggle-dot"></div>
+    <div class="toggle-label" id="toggle-label">Hors ligne</div>
+  </div>
+  <button class="toggle-btn btn-goon" id="toggle-btn" type="button">Passer en ligne</button>
+</div>
 
 <div class="stats">
   <div class="stat"><div class="stat-num" style="color:#f0a500" id="cnt-p">0</div><div class="stat-txt">En attente</div></div>
@@ -91,6 +106,7 @@ var distCache = {};
 var audioCtx = null;
 var currentTab = 'live';
 var allData = {};
+var isOnline = false;
 
 document.getElementById('loginbtn').addEventListener('click', login);
 document.getElementById('pwd').addEventListener('keypress', function(e){
@@ -102,7 +118,7 @@ function login(){
   if(pwd === 'taxi2026'){
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     document.getElementById('modal').classList.add('hide');
-    document.getElementById('status').textContent = '🟢 En ligne - Temps réel';
+    document.getElementById('sub').textContent = '🟢 Connecté';
     initFirebase();
   } else {
     alert('Mot de passe incorrect !');
@@ -121,11 +137,41 @@ function initFirebase(){
   };
   firebase.initializeApp(config);
   db = firebase.database();
+
+  // Surveille le statut
+  db.ref('chauffeur_status').on('value', function(snap){
+    isOnline = snap.val() === true;
+    updateToggleUI();
+  });
+
+  // Surveille les courses
   db.ref('rides').on('value', function(snap){
     allData = snap.val() || {};
     checkNew(allData);
     render(allData);
   });
+
+  // Toggle bouton
+  document.getElementById('toggle-btn').addEventListener('click', function(){
+    db.ref('chauffeur_status').set(!isOnline);
+  });
+}
+
+function updateToggleUI(){
+  var dot = document.getElementById('toggle-dot');
+  var label = document.getElementById('toggle-label');
+  var btn = document.getElementById('toggle-btn');
+  if(isOnline){
+    dot.className = 'toggle-dot dot-on';
+    label.textContent = 'En ligne — Disponible';
+    btn.className = 'toggle-btn btn-gooff';
+    btn.textContent = 'Passer hors ligne';
+  } else {
+    dot.className = 'toggle-dot dot-off';
+    label.textContent = 'Hors ligne';
+    btn.className = 'toggle-btn btn-goon';
+    btn.textContent = 'Passer en ligne';
+  }
 }
 
 function checkNew(data){
@@ -203,7 +249,7 @@ function render(data){
     var hhtml = '';
     if(done.length){
       done.forEach(function(r){
-        var date = r.created ? new Date(r.created).toLocaleDateString('fr-CA', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        var date = r.created ? new Date(r.created).toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
         hhtml += '<div class="ride done">';
         hhtml += '<div class="hist-date">'+date+'</div>';
         hhtml += '<div class="ride-header"><div class="ride-name">👤 '+r.name+'</div><div class="ride-phone">📞 '+r.phone+'</div></div>';
@@ -230,7 +276,7 @@ function render(data){
         }
         return;
       }, function(error, committed){
-        if(!committed) alert('Cette course a déjà été acceptée par un autre chauffeur !');
+        if(!committed) alert('Cette course a déjà été acceptée !');
       });
     });
   });
@@ -255,7 +301,7 @@ function render(data){
 
 function card(r){
   var color = r.status === 'pending' ? '#f0a500' : '#3fb950';
-  var html = '<div class="ride '+(r.status === 'accepted' ? 'accepted' : '')+'" style="border-left-color:'+color+'">';
+  var html = '<div class="ride '+(r.status==='accepted'?'accepted':'')+'" style="border-left-color:'+color+'">';
   html += '<div class="ride-header"><div class="ride-name">👤 '+r.name+'</div><div class="ride-phone">📞 '+r.phone+'</div></div>';
   html += '<div class="ride-grid">';
   html += '<div class="ride-box"><div class="ride-box-label">🟢 Départ</div><div class="ride-box-val">'+r.from+'</div></div>';
