@@ -32,6 +32,7 @@ input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#
 .step-title{font-weight:700;font-size:14px}
 .step-sub{font-size:12px;color:#8b949e;margin-top:2px}
 .btn-new{width:100%;padding:12px;border-radius:12px;border:none;background:#21262d;color:#e6edf3;font-weight:700;font-size:14px;cursor:pointer;margin-top:12px}
+.btn-cancel{width:100%;padding:12px;border-radius:12px;border:1px solid #f85149;background:transparent;color:#f85149;font-weight:700;font-size:14px;cursor:pointer;margin-top:8px}
 </style>
 </head>
 <body>
@@ -93,6 +94,7 @@ input,select{width:100%;padding:12px;border-radius:10px;border:none;background:#
       </div>
     </div>
     <button class="btn-new" id="newbtn">➕ Nouvelle réservation</button>
+    <button class="btn-cancel" id="cancelbtn">✗ Annuler ma course</button>
   </div>
 </div>
 
@@ -133,7 +135,6 @@ function playSound(){
   } catch(e){}
 }
 
-// Surveille le statut chauffeur en temps réel
 db.ref('chauffeur_status').on('value', function(snap){
   var online = snap.val() === true;
   var bar = document.getElementById('status-bar');
@@ -167,16 +168,21 @@ function watchRide(key){
       resetForm();
       return;
     }
+    var cancelBtn = document.getElementById('cancelbtn');
     if(ride.status === 'accepted'){
       document.getElementById('step1').className = 'step done';
       document.getElementById('step2').className = 'step accepted';
       document.getElementById('step2-sub').textContent = '🚗 Le chauffeur arrive !';
+      if(cancelBtn) cancelBtn.style.display = 'none';
       playSound();
     } else if(ride.status === 'done'){
       document.getElementById('step1').className = 'step done';
       document.getElementById('step2').className = 'step done';
       document.getElementById('step3').className = 'step accepted';
+      if(cancelBtn) cancelBtn.style.display = 'none';
       localStorage.removeItem('currentRideKey');
+    } else if(ride.status === 'pending'){
+      if(cancelBtn) cancelBtn.style.display = 'block';
     }
   });
 }
@@ -221,6 +227,15 @@ document.getElementById('sendbtn').addEventListener('click', function(){
   localStorage.setItem('currentRideKey', currentRideKey);
   showTracking();
   watchRide(currentRideKey);
+});
+
+document.getElementById('cancelbtn').addEventListener('click', function(){
+  if(!currentRideKey) return;
+  if(confirm('Voulez-vous vraiment annuler votre course ?')){
+    db.ref('rides/'+currentRideKey).remove();
+    localStorage.removeItem('currentRideKey');
+    resetForm();
+  }
 });
 
 document.getElementById('newbtn').addEventListener('click', function(){
